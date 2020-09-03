@@ -1,2 +1,0 @@
-Dataset Name        	Month/Day/Hour/Min	Frame(Init/Aligned/InitQuality)	Dist(GT_raw/GT_Aligned/Est_conv)(m)	mTran Error(m)/std	Scale Error(%)/std	Rot Error(degree)/std	RPE(m)(10%/20%/30%/40%/50%/)
-                    	9/1/21/24		321  /1949 /8.09993		83.22520/83.14358/72.23551		0.26936/0.25445		2.69442/2.29470		14.54211/14.16511		0.783/0.429/0.439/0.517/0.554		
