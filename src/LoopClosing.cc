@@ -196,6 +196,7 @@ void LoopClosing::Run()
                             }
 
                             mvpLoopMapPoints = mvpLoopMPs;//*mvvpLoopMapPoints[nCurrentIndex];
+                            Verbose::PrintMess("*CorrectLoop() 1", Verbose::VERBOSITY_QUIET);
                             CorrectLoop();
                         }
                         else

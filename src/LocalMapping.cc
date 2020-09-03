@@ -1347,12 +1347,14 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     if (bFIBA)
     {
         if (priorA!=0.f)
-            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false, 0, NULL, true, priorG, priorA);
+            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 50, false, 0, NULL, true, priorG, priorA);
         else
-            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false, 0, NULL, false);
+            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 50, false, 0, NULL, false);
     }
 
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
+    double t_viba = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(t5 - t4).count();
+    cout << endl << "VIBA 耗时为 " << t_viba << endl << endl;
 
     // If initialization is OK
     mpTracker->UpdateFrameIMU(1.0,vpKF[0]->GetImuBias(),mpCurrentKeyFrame);

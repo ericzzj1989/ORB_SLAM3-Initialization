@@ -1243,6 +1243,10 @@ void Tracking::Track()
         if(!mCurrentFrame.mTcw.empty())
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
+        // ofstream f_vel;
+        // f_vel.open("Frame_velocity.txt", ios_base::app);
+        // f_vel << fixed;
+
         if(bOK || mState==RECENTLY_LOST)
         {
             // Update motion model
@@ -1258,6 +1262,14 @@ void Tracking::Track()
 
             if(mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO)
                 mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+
+        
+            
+            
+            // if(!mCurrentFrame.mVw.empty()) {
+            //     f_vel << setprecision(9) << mCurrentFrame.mTimeStamp << " " << mCurrentFrame.mVw.at<float>(0) << " " << mCurrentFrame.mVw.at<float>(1) << " " << mCurrentFrame.mVw.at<float>(2) << std::endl;
+            // }
+            
 
             // Clean VO matches
             for(int i=0; i<mCurrentFrame.N; i++)
@@ -1332,7 +1344,35 @@ void Tracking::Track()
     }
 
 
+    static int int_cnt = 0, ba1_cnt = 0, ba2_cnt = 0;
+    static bool t_first;
+    cv::Mat t_pre;
+    ofstream f_odom_all_;
+    f_odom_all_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/all_odom.txt", ios_base::app);
+    f_odom_all_ << fixed;
+    ofstream f_inertial_;
+    f_inertial_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/inertial_odom.txt", ios_base::app);
+    f_inertial_ << fixed;
+    ofstream f_ba1_;
+    f_ba1_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/ba1_odom.txt", ios_base::app);
+    f_ba1_ << fixed;
+    ofstream f_ba2_;
+    f_ba2_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/ba2_odom.txt", ios_base::app);
+    f_ba2_ << fixed;
 
+    ofstream f_k_inertial_;
+    f_k_inertial_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/k_inertial_odom.txt", ios_base::app);
+    f_k_inertial_ << fixed;
+    ofstream f_k_ba1_;
+    f_k_ba1_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/k_ba1_odom.txt", ios_base::app);
+    f_k_ba1_ << fixed;
+    ofstream f_k_ba2_;
+    f_k_ba2_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/k_ba2_odom.txt", ios_base::app);
+    f_k_ba2_ << fixed;
+
+    ofstream f_trans_;
+    f_trans_.open("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/trans.txt", ios_base::app);
+    f_trans_ << fixed;
 
     if(mState==OK || mState==RECENTLY_LOST)
     {
@@ -1344,6 +1384,70 @@ void Tracking::Track()
             mlpReferences.push_back(mCurrentFrame.mpReferenceKF);
             mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
             mlbLost.push_back(mState==LOST);
+
+            // Initialization debug
+            // 调用SaveTrajectoryEuRoC保存整个数据集初始化时的位姿 save trajectory
+            if (pCurrentMap->isImuInitialized() && int_cnt < 1) {
+                mpSystem->SaveTrajectoryEuRoC("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/inertial.txt");
+                mpSystem->SaveKeyFrameTrajectoryEuRoC("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/k_inertial.txt");
+                int_cnt++;
+            } else if (pCurrentMap->GetIniertialBA1() && ba1_cnt < 1) {
+                mpSystem->SaveTrajectoryEuRoC("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/ba1.txt");
+                ba1_cnt++;
+            } else if (pCurrentMap->GetIniertialBA2() && ba2_cnt < 1) {
+                mpSystem->SaveTrajectoryEuRoC("/home/eric/source_code/ORB_SLAM3_benchmark/traj_results/ba2.txt");
+                ba2_cnt++;
+            }
+
+            // 实时保存当前帧位姿 save odometry - frame
+            if (!mCurrentFrame.GetImuPose().empty()) {
+                cv::Mat Twb = mCurrentFrame.GetImuPose();
+                cv::Mat Rwb = Twb.rowRange(0,3).colRange(0,3);
+                cv::Mat twb = Twb.rowRange(0,3).col(3);
+                vector<float> q = Converter::toQuaternion(Rwb);
+                if (pCurrentMap->isImuInitialized()) {
+                    f_odom_all_ << setprecision(6) << mCurrentFrame.mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                    if (false == t_first) {
+                        cv::Mat t_pre = twb;
+                        t_first = true;
+                    } else {
+                        cv::Mat t = twb - t_pre;
+                        double dist = sqrt(t.at<float>(0) * t.at<float>(0) + t.at<float>(1) * t.at<float>(1) + t.at<float>(2) * t.at<float>(2));
+                        f_trans_ << dist << endl;
+                        // cout << setprecision(19) << mCurrentFrame.mTimeStamp << ", ";
+                        // cout << setprecision(9) << dist << endl;
+                    }   
+                }
+                // f_odom_all_ << setprecision(6) << mCurrentFrame.mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+                if (!pCurrentMap->isImuInitialized() && int_cnt < 1) {
+                    f_inertial_ << setprecision(6) << mCurrentFrame.mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                }
+                if (!pCurrentMap->GetIniertialBA1() && ba1_cnt < 1) {
+                    f_ba1_ << setprecision(6) << mCurrentFrame.mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                }
+                if (!pCurrentMap->GetIniertialBA2() && ba2_cnt < 1) {
+                    f_ba2_ << setprecision(6) << mCurrentFrame.mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                }
+            }
+
+            // 实时保存当前关键帧位姿 save odometry - keyframe
+            if (!mpLastKeyFrame->GetImuPose().empty()) {
+                cv::Mat Twb = mpLastKeyFrame->GetImuPose();
+                cv::Mat Rwb = Twb.rowRange(0,3).colRange(0,3);
+                cv::Mat twb = Twb.rowRange(0,3).col(3);
+                vector<float> q = Converter::toQuaternion(Rwb);
+                if (!pCurrentMap->isImuInitialized() && int_cnt < 1) {
+                    f_k_inertial_ << setprecision(6) << mpLastKeyFrame->mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                }
+                if (!pCurrentMap->GetIniertialBA1() && ba1_cnt < 1) {
+                    f_k_ba1_ << setprecision(6) << mpLastKeyFrame->mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                }
+                if (!pCurrentMap->GetIniertialBA2() && ba2_cnt < 1) {
+                    f_k_ba2_ << setprecision(6) << mpLastKeyFrame->mTimeStamp << " " <<  setprecision(9) << twb.at<float>(0) << " " << twb.at<float>(1) << " " << twb.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+                } 
+            }
+
         }
         else
         {
@@ -1355,6 +1459,14 @@ void Tracking::Track()
         }
 
     }
+
+    f_odom_all_.close();
+    f_inertial_.close();
+    f_ba1_.close();
+    f_ba2_.close();
+    f_k_inertial_.close();
+    f_k_ba1_.close();
+    f_k_ba2_.close();
 }
 
 

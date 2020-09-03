@@ -459,6 +459,11 @@ void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const l
                 nNonFixed++;
             VP->setFixed(bFixed);
         }
+
+        if (pMap->isImuInitialized() && (pKFi->mnId == pMap->GetInitKFid())) {
+            cout << endl << "固定了第 " << pKFi->mnId << " 帧的位姿" << endl;
+            VP->setFixed(true);
+        }
         optimizer.addVertex(VP);
 
         if(pKFi->bImu)
